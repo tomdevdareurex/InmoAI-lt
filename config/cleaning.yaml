@@ -1,0 +1,78 @@
+# InmoAI-lt cleaning configuration.
+#
+# Threshold provenance: every bound under `quality.flags` is a loose envelope around
+# the measured Vilnius distribution recorded in docs/DATA_PROFILE.md, chosen to catch
+# only the clear tail of the distribution. None of these numbers are copied from the
+# InmoAI (Chile) project. They set flags only -- they never delete rows. Only the
+# rules under `quality.fatal` remove a row.
+
+project:
+  reference_date_source: max_scrape_timestamp   # NEVER datetime.now() -- reproducibility
+  random_seed: 0
+
+input:
+  encoding: utf-8-sig
+  raw_dir: data/raw
+  sources:
+    - file: apartments_sale_vilnius.csv
+      property_type: apartment
+      listing_type: sale
+      enabled: true
+    - file: houses_sale_vilnius.csv
+      property_type: house
+      listing_type: sale
+      enabled: true
+    - file: apartments_rent_vilnius.csv
+      property_type: apartment
+      listing_type: rent
+      enabled: false        # only 50 rows, partial scrape -- see docs/DATA_PROFILE.md
+
+output:
+  dir: data/processed
+  clean_basename: vilnius_listings_clean       # all retained rows, with flags
+  analysis_basename: vilnius_listings_analysis # is_valid & not duplicate
+  write_parquet: true
+  float_round: 4
+
+columns:
+  drop_all_null: true          # drop only if null across the WHOLE combined dataset
+  collapse_redundant: true
+
+dedup:
+  # listing_id is the primary key (0 dupes measured). This is the CONTENT key.
+  content_key: [property_type, district, street, house_number, total_area_sqm_rounded, rooms, price_eur]
+  area_round_dp: 1
+  keep: latest_updated        # tie-break: higher views_count, then lower listing_id
+
+quality:
+  fatal:                       # these remove the row
+    require_non_null: [listing_id, property_type, price_eur, total_area_sqm, latitude, longitude]
+    price_eur_min_exclusive: 0
+    total_area_sqm_min_exclusive: 0
+  flags:                       # these only set a flag column
+    price_eur:
+      apartment: {min: 10000, max: 7500000}
+      house:     {min: 15000, max: 7500000}
+    total_area_sqm:
+      apartment: {min: 15, max: 1400}
+      house:     {min: 20, max: 3000}
+    price_per_sqm_eur:
+      apartment: {min: 400, max: 12000}
+      house:     {min: 400, max: 12000}
+    construction_year: {min: 1600, max_offset_from_reference_year: 5}
+    rooms: {min: 1, max: 25}
+    stale_listing_age_days: 730
+    plot_area_sqm_min_exclusive: 0    # houses only
+  vilnius_bbox: {lat_min: 54.50, lat_max: 54.90, lon_min: 24.95, lon_max: 25.55}
+  lithuania_bbox: {lat_min: 53.8, lat_max: 56.5, lon_min: 20.8, lon_max: 26.9}
+  blocking_flags:
+    - price_out_of_range
+    - area_out_of_range
+    - price_per_sqm_out_of_range
+    - construction_year_out_of_range
+    - coords_outside_vilnius
+    - non_standard_object
+    - not_habitable
+
+derive:
+  enabled: true

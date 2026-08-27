@@ -1,0 +1,88 @@
+# Controlled Lithuanian -> English vocabulary.
+#
+# Lookup must be case-insensitive and whitespace-trimmed, because the source
+# lowercases second-and-later tokens in multi-value fields (e.g. "Centrinis, dujinis").
+# English values map to themselves (identity/passthrough) because the scraper already
+# translated some values -- these columns are mixed-language in the source.
+#
+# `district`, `street`, `energy_class` are NOT translated. Lithuanian place names stay
+# verbatim. Unmapped values are never silently dropped: any value not in this table is
+# kept as-is (with diacritics) and recorded in the report under `unmapped_category_values`.
+
+building_type:          # from `Pastato tipas`
+  mūrinis: brick
+  blokinis: concrete_block
+  monolitinis: monolithic
+  medinis: wood
+  rąstinis: log
+  karkasinis: frame
+  skydinis: panel
+  kita: other
+  # passthrough of already-translated values
+  brick: brick
+  concrete_block: concrete_block
+  monolithic: monolithic
+  wood: wood
+
+condition:              # from `Įrengimas`
+  įrengtas: fully_finished
+  "dalinė apdaila": partially_finished
+  neįrengtas: unfinished
+  "nebaigtas statyti": under_construction
+  pamatai: foundation_only
+  "reikalingas remontas": renovation_required
+  kita: other
+  fully_finished: fully_finished
+  partially_finished: partially_finished
+  unfinished: unfinished
+  renovation_required: renovation_required
+
+house_type:             # from `Namo tipas`
+  "namas (gyvenamasis)": detached_house
+  "sublokuotas namas": semi_detached
+  "kotedžas": townhouse
+  "sodo namas": garden_house
+  "namo dalis": house_share
+  "sodyba": homestead
+  "kita (nukeliamas, projektas, kt.)": other
+  detached_house: detached_house
+  terraced_house: semi_detached      # scraper's label for `Sublokuotas namas`
+  townhouse: townhouse
+
+heating_type:           # from `Šildymas` -- MULTI-VALUED, comma separated
+  centrinis: central
+  "centrinis kolektorinis": central_collector
+  dujinis: gas
+  elektra: electric
+  aeroterminis: air_source_heat_pump
+  geoterminis: geothermal
+  "kietu kuru": solid_fuel
+  "skystu kuru": liquid_fuel
+  "saulės energija": solar
+  krosninis: stove
+  kita: other
+
+water_supply:           # from `Vanduo` -- MULTI-VALUED
+  "miesto vandentiekis": city_water
+  "vietinis vandentiekis": local_water
+  "artezinis gręžinys": artesian_well
+  "šulinys": well
+  kita: other
+
+water_body:             # from `Artimiausias vandens telkinys`
+  "ežeras": lake
+  "upė": river
+  tvenkinys: pond
+  "jūra": sea
+  marios: lagoon
+
+orientation:            # from `Langų orientacija` -- MULTI-VALUED, order NOT canonical
+  "šiaurė": north
+  "pietūs": south
+  rytai: east
+  vakarai: west
+
+object_type:            # from `Objektas` -- non-standard objects
+  "buto dalis": apartment_share
+  "patalpa, poilsio paskirtis": recreational_premises
+  "patalpa, viešbučių paskirtis": hotel_premises
