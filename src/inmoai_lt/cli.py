@@ -41,10 +41,11 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _load_ctx(args: argparse.Namespace) -> PipelineConfig:
+    # `profile` never reads raw sources, so its subparser has no `--raw-dir` flag.
     return load_config(
         config_path=args.config,
         mappings_path=args.mappings,
-        raw_dir=args.raw_dir,
+        raw_dir=getattr(args, "raw_dir", None),
         out_dir=args.out_dir,
     )
 
@@ -65,6 +66,10 @@ def cmd_clean(args: argparse.Namespace) -> int:
     logger.info("clean rows = %d, clean cols = %d", len(result.clean_df), len(result.clean_df.columns))
     logger.info("clean csv = %s", result.clean_csv_path)
     logger.info("analysis csv = %s", result.analysis_csv_path)
+    for segment, path in result.segment_csv_paths.items():
+        logger.info("segment %s csv = %s", segment, path)
+    logger.info("html report = %s", result.html_report_path)
+    logger.info("analysis report = %s", result.analysis_report_path)
     return 0
 
 
@@ -79,6 +84,12 @@ def cmd_profile(args: argparse.Namespace) -> int:
     df = pd.read_csv(clean_csv_path, encoding="utf-8-sig")
     print(f"rows: {len(df)}")
     print(f"columns: {len(df.columns)}")
+    if "segment" in df.columns:
+        print()
+        print("segment                              rows")
+        print("-" * 60)
+        for segment, count in df["segment"].value_counts().sort_index().items():
+            print(f"{segment:<35} {count:>8}")
     print()
     print("column                              non-null   dtype")
     print("-" * 60)

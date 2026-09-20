@@ -13,6 +13,7 @@ from typing import Any
 
 import pandas as pd
 
+from inmoai_lt import analysis_report, html_report
 from inmoai_lt.cleaning import attributes, categorical, columns, dedup, derive, features, geo, quality
 from inmoai_lt.cleaning.parsers import (
     normalize_text,
@@ -58,6 +59,9 @@ class PipelineResult:
     reference_date: pd.Timestamp
     clean_csv_path: Path
     analysis_csv_path: Path
+    segment_csv_paths: dict[str, Path]
+    html_report_path: Path
+    analysis_report_path: Path
 
 
 def _normalize_types_and_categories(df: pd.DataFrame, ctx: PipelineConfig, report: CleaningReport) -> pd.DataFrame:
@@ -215,17 +219,18 @@ def run_pipeline(ctx: PipelineConfig) -> PipelineResult:
 
     # Stage 10 -- output
     output_cfg = ctx.cleaning["output"]
-    clean_csv_path, analysis_csv_path = write_outputs(
+    paths = write_outputs(
         df,
         ctx.output_dir,
         output_cfg["clean_basename"],
         output_cfg["analysis_basename"],
         output_cfg["float_round"],
         output_cfg["write_parquet"],
+        output_cfg.get("segment_dir", "segments"),
     )
 
-    ordered_clean = pd.read_csv(clean_csv_path, encoding="utf-8-sig")
-    ordered_analysis = pd.read_csv(analysis_csv_path, encoding="utf-8-sig")
+    ordered_clean = pd.read_csv(paths.clean_csv, encoding="utf-8-sig")
+    ordered_analysis = pd.read_csv(paths.analysis_csv, encoding="utf-8-sig")
     report.record_final_counts(
         clean_rows=len(ordered_clean),
         clean_cols=len(ordered_clean.columns),
@@ -235,11 +240,29 @@ def run_pipeline(ctx: PipelineConfig) -> PipelineResult:
 
     report.write_json(ctx.output_dir / "cleaning_report.json")
     report.write_markdown(ctx.output_dir / "cleaning_report.md")
+    html_report_path = ctx.output_dir / "cleaning_report.html"
+    html_report.write_html_report(
+        report=report,
+        sample_df=ordered_clean.head(15),
+        cleaning_cfg=ctx.cleaning,
+        path=html_report_path,
+    )
+
+    analysis_report_path = ctx.output_dir / "analysis_report.html"
+    analysis_report.write_analysis_report(
+        analysis_df=ordered_analysis,
+        reference_date=reference_date,
+        config_hash=ctx.config_hash,
+        path=analysis_report_path,
+    )
 
     return PipelineResult(
         clean_df=df,
         report=report,
         reference_date=reference_date,
-        clean_csv_path=clean_csv_path,
-        analysis_csv_path=analysis_csv_path,
+        clean_csv_path=paths.clean_csv,
+        analysis_csv_path=paths.analysis_csv,
+        segment_csv_paths=paths.segment_csvs,
+        html_report_path=html_report_path,
+        analysis_report_path=analysis_report_path,
     )

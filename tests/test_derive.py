@@ -9,6 +9,8 @@ _REFERENCE_DATE = pd.Timestamp("2026-08-25", tz="UTC")
 
 def _base_row(**overrides):
     row = {
+        "property_type": "apartment",
+        "listing_type": "sale",
         "construction_year": 2000,
         "renovation_year": None,
         "floor": 3,

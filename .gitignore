@@ -13,3 +13,5 @@ data/processed/*
 logs/*
 !logs/.gitkeep
 .ruff_cache/
+models/*.joblib
+.ipynb_checkpoints/

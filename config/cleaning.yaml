@@ -25,12 +25,17 @@ input:
     - file: apartments_rent_vilnius.csv
       property_type: apartment
       listing_type: rent
-      enabled: false        # only 50 rows, partial scrape -- see docs/DATA_PROFILE.md
+      enabled: true
+    - file: houses_rent_vilnius.csv
+      property_type: house
+      listing_type: rent
+      enabled: true         # small sample -- modelling flags this segment as low-n
 
 output:
   dir: data/processed
   clean_basename: vilnius_listings_clean       # all retained rows, with flags
   analysis_basename: vilnius_listings_analysis # is_valid & not duplicate
+  segment_dir: segments                        # per-segment split of the analysis output
   write_parquet: true
   float_round: 4
 
@@ -46,19 +51,34 @@ dedup:
 
 quality:
   fatal:                       # these remove the row
-    require_non_null: [listing_id, property_type, price_eur, total_area_sqm, latitude, longitude]
+    # latitude/longitude are deliberately NOT fatal: 48 of the 50 rent listings have no
+    # coordinates, and a missing location is a gap in the record, not a reason to discard a
+    # priced, sized listing. It is flagged as `missing_coordinates` (advisory) instead.
+    require_non_null: [listing_id, property_type, price_eur, total_area_sqm]
     price_eur_min_exclusive: 0
     total_area_sqm_min_exclusive: 0
   flags:                       # these only set a flag column
+    # Keyed by SEGMENT (<property_type>_<listing_type>), not property_type: rent prices are a
+    # different regime entirely (EUR/month, not EUR), so one shared bound cannot serve both.
+    # Sale bounds are unchanged. Rent bounds are a loose envelope around the measured rent
+    # distribution (price 240-2800, EUR/sqm 8.9-38.9, area 16-129).
+    # `house_rent` has no source yet; its bounds exist so a future scrape does not fall
+    # through to "no bounds at all".
     price_eur:
-      apartment: {min: 10000, max: 7500000}
-      house:     {min: 15000, max: 7500000}
+      apartment_sale: {min: 10000, max: 7500000}
+      house_sale:     {min: 15000, max: 7500000}
+      apartment_rent: {min: 100,   max: 15000}
+      house_rent:     {min: 150,   max: 20000}
     total_area_sqm:
-      apartment: {min: 15, max: 1400}
-      house:     {min: 20, max: 3000}
+      apartment_sale: {min: 15, max: 1400}
+      house_sale:     {min: 20, max: 3000}
+      apartment_rent: {min: 10, max: 500}
+      house_rent:     {min: 20, max: 1000}
     price_per_sqm_eur:
-      apartment: {min: 400, max: 12000}
-      house:     {min: 400, max: 12000}
+      apartment_sale: {min: 400, max: 12000}
+      house_sale:     {min: 400, max: 12000}
+      apartment_rent: {min: 2,   max: 80}
+      house_rent:     {min: 2,   max: 80}
     construction_year: {min: 1600, max_offset_from_reference_year: 5}
     rooms: {min: 1, max: 25}
     stale_listing_age_days: 730

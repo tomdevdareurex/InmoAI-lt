@@ -7,16 +7,19 @@ from inmoai_lt.cleaning.quality import apply_fatal_filter, compute_quality_flags
 _QUALITY_CFG = {
     "flags": {
         "price_eur": {
-            "apartment": {"min": 10000, "max": 7500000},
-            "house": {"min": 15000, "max": 7500000},
+            "apartment_sale": {"min": 10000, "max": 7500000},
+            "house_sale": {"min": 15000, "max": 7500000},
+            "apartment_rent": {"min": 100, "max": 15000},
         },
         "total_area_sqm": {
-            "apartment": {"min": 15, "max": 1400},
-            "house": {"min": 20, "max": 3000},
+            "apartment_sale": {"min": 15, "max": 1400},
+            "house_sale": {"min": 20, "max": 3000},
+            "apartment_rent": {"min": 10, "max": 500},
         },
         "price_per_sqm_eur": {
-            "apartment": {"min": 400, "max": 12000},
-            "house": {"min": 400, "max": 12000},
+            "apartment_sale": {"min": 400, "max": 12000},
+            "house_sale": {"min": 400, "max": 12000},
+            "apartment_rent": {"min": 2, "max": 80},
         },
         "construction_year": {"min": 1600, "max_offset_from_reference_year": 5},
         "rooms": {"min": 1, "max": 25},
@@ -41,6 +44,7 @@ def _clean_row(**overrides):
     row = {
         "listing_id": "1",
         "property_type": "apartment",
+        "listing_type": "sale",
         "price_eur": 150000,
         "total_area_sqm": 50.0,
         "price_per_sqm_eur": 3000.0,

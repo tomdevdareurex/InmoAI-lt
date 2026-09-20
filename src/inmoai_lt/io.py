@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -75,6 +76,13 @@ def compute_reference_date(df: pd.DataFrame) -> pd.Timestamp:
     return reference_date
 
 
+@dataclass(frozen=True)
+class OutputPaths:
+    clean_csv: Path
+    analysis_csv: Path
+    segment_csvs: dict[str, Path]
+
+
 def write_outputs(
     clean_df: pd.DataFrame,
     output_dir: Path,
@@ -82,8 +90,13 @@ def write_outputs(
     analysis_basename: str,
     float_round: int,
     write_parquet: bool,
-) -> tuple[Path, Path]:
-    """Enforce final column order, round floats, sort, and write clean + analysis outputs."""
+    segment_dir: str = "segments",
+) -> OutputPaths:
+    """Enforce final column order, round floats, sort, and write clean + analysis outputs.
+
+    The analysis frame is additionally partitioned by `segment` into one file each, so a
+    rent apartment and a sale house are never pooled into a single distribution.
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
 
     ordered_cols = schema.enforce_final_column_order(clean_df.columns)
@@ -111,7 +124,39 @@ def write_outputs(
         result.to_parquet(output_dir / f"{clean_basename}.parquet", index=False)
         analysis_df.to_parquet(output_dir / f"{analysis_basename}.parquet", index=False)
 
-    return clean_csv_path, analysis_csv_path
+    segment_csvs = _write_segment_outputs(
+        analysis_df, output_dir / segment_dir, write_parquet
+    )
+
+    return OutputPaths(
+        clean_csv=clean_csv_path,
+        analysis_csv=analysis_csv_path,
+        segment_csvs=segment_csvs,
+    )
+
+
+def _write_segment_outputs(
+    analysis_df: pd.DataFrame, segment_dir: Path, write_parquet: bool
+) -> dict[str, Path]:
+    """Split `analysis_df` by `segment` into one file per segment.
+
+    Segments come from the values actually present (sorted, so output is deterministic),
+    which is what lets a future `house_rent` source appear with no code change.
+    """
+    if "segment" not in analysis_df.columns:
+        return {}
+
+    segment_dir.mkdir(parents=True, exist_ok=True)
+    paths: dict[str, Path] = {}
+    for segment in sorted(analysis_df["segment"].dropna().unique()):
+        subset = analysis_df.loc[analysis_df["segment"] == segment].reset_index(drop=True)
+        path = segment_dir / f"{segment}_analysis.csv"
+        _write_csv(subset, path)
+        if write_parquet:
+            subset.to_parquet(segment_dir / f"{segment}_analysis.parquet", index=False)
+        paths[str(segment)] = path
+        logger.info("wrote segment %s: %d rows", segment, len(subset))
+    return paths
 
 
 def _write_csv(df: pd.DataFrame, path: Path) -> None:

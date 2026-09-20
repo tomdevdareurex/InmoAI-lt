@@ -11,6 +11,8 @@ from typing import Any
 
 import pandas as pd
 
+from inmoai_lt.cleaning import quality
+
 
 def add_derived_features(
     df: pd.DataFrame,
@@ -19,6 +21,8 @@ def add_derived_features(
 ) -> pd.DataFrame:
     result = df.copy()
     reference_year = reference_date.year
+
+    result["segment"] = quality.build_segment(result)
 
     construction_year = pd.to_numeric(result.get("construction_year"), errors="coerce")
     renovation_year = pd.to_numeric(result.get("renovation_year"), errors="coerce")

@@ -50,7 +50,7 @@ JSON_COLUMNS: list[str] = [
 # io.py filters this list down to columns actually present before reindexing.
 FINAL_COLUMN_ORDER: list[str] = [
     # identity
-    "listing_id", "property_type", "listing_type", "source_file",
+    "listing_id", "property_type", "listing_type", "segment", "source_file",
     # location
     "city", "district", "street", "house_number", "full_address",
     "latitude", "longitude",
@@ -94,6 +94,7 @@ FINAL_COLUMN_ORDER: list[str] = [
     "flag_construction_year_out_of_range", "flag_rooms_out_of_range",
     "flag_floor_gt_total_floors", "flag_plot_area_zero",
     "flag_non_standard_object", "flag_not_habitable",
+    "flag_missing_coordinates",
     "flag_coords_outside_vilnius", "flag_coords_outside_lithuania",
     "flag_coords_approximate", "flag_stale_listing",
     "flag_description_redacted", "flag_missing_description", "flag_duplicate",

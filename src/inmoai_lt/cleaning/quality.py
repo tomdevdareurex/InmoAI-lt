@@ -21,6 +21,7 @@ _FLAG_NAMES = [
     "plot_area_zero",
     "non_standard_object",
     "not_habitable",
+    "missing_coordinates",
     "coords_outside_vilnius",
     "coords_outside_lithuania",
     "coords_approximate",
@@ -33,11 +34,22 @@ _FLAG_NAMES = [
 _NOT_HABITABLE_CONDITIONS = {"foundation_only", "under_construction"}
 
 
-def _per_type_bounds(series: pd.Series, property_type: pd.Series, bounds_by_type: dict[str, dict]) -> pd.Series:
+def build_segment(df: pd.DataFrame) -> pd.Series:
+    """`<property_type>_<listing_type>`, e.g. `apartment_sale`, `house_rent`.
+
+    The unit every price/area bound is calibrated against: rent and sale are different
+    price regimes, so `property_type` alone is not a sufficient key.
+    """
+    return df["property_type"].astype("string") + "_" + df["listing_type"].astype("string")
+
+
+def _per_segment_bounds(
+    series: pd.Series, segment: pd.Series, bounds_by_segment: dict[str, dict]
+) -> pd.Series:
     numeric = pd.to_numeric(series, errors="coerce")
     out_of_range = pd.Series(False, index=series.index)
-    for ptype, bounds in bounds_by_type.items():
-        mask = property_type == ptype
+    for seg, bounds in bounds_by_segment.items():
+        mask = (segment == seg).fillna(False)
         out_of_range |= mask & numeric.notna() & ((numeric < bounds["min"]) | (numeric > bounds["max"]))
     return out_of_range
 
@@ -54,15 +66,16 @@ def compute_quality_flags(
     result = df.copy()
     flags_cfg = quality_cfg["flags"]
     ptype = result["property_type"]
+    segment = build_segment(result)
 
     price = pd.to_numeric(result["price_eur"], errors="coerce")
     area = pd.to_numeric(result["total_area_sqm"], errors="coerce")
     price_per_sqm = pd.to_numeric(result["price_per_sqm_eur"], errors="coerce")
 
-    result["flag_price_out_of_range"] = _per_type_bounds(price, ptype, flags_cfg["price_eur"])
-    result["flag_area_out_of_range"] = _per_type_bounds(area, ptype, flags_cfg["total_area_sqm"])
-    result["flag_price_per_sqm_out_of_range"] = _per_type_bounds(
-        price_per_sqm, ptype, flags_cfg["price_per_sqm_eur"]
+    result["flag_price_out_of_range"] = _per_segment_bounds(price, segment, flags_cfg["price_eur"])
+    result["flag_area_out_of_range"] = _per_segment_bounds(area, segment, flags_cfg["total_area_sqm"])
+    result["flag_price_per_sqm_out_of_range"] = _per_segment_bounds(
+        price_per_sqm, segment, flags_cfg["price_per_sqm_eur"]
     )
 
     area_safe = area.where(area != 0)
@@ -111,8 +124,13 @@ def compute_quality_flags(
     else:
         result["flag_not_habitable"] = False
 
-    # flag_coords_* already computed in geo.py; keep them if present, else default False.
-    for col in ("flag_coords_outside_vilnius", "flag_coords_outside_lithuania", "flag_coords_approximate"):
+    # geo flags already computed in geo.py; keep them if present, else default False.
+    for col in (
+        "flag_missing_coordinates",
+        "flag_coords_outside_vilnius",
+        "flag_coords_outside_lithuania",
+        "flag_coords_approximate",
+    ):
         if col not in result.columns:
             result[col] = False
 

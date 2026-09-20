@@ -44,7 +44,19 @@
       "Bash(rm -rf data/logs)",
       "Bash(venv/Scripts/python.exe -m inmoai_lt clean)",
       "Bash(cp data/processed/vilnius_listings_clean.csv /tmp/run1_clean.csv)",
-      "Bash(cp data/processed/cleaning_report.json /tmp/run1_report.json)"
+      "Bash(cp data/processed/cleaning_report.json /tmp/run1_report.json)",
+      "Bash(venv/Scripts/python.exe -m inmoai_lt profile)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(venv/Scripts/python.exe -m pytest tests/test_cli.py -v)",
+      "Bash(venv/Scripts/python.exe -m pytest -q)",
+      "Bash(ls data/processed)",
+      "Bash(wc -l data/processed/cleaning_report.json)",
+      "Bash(python -m pytest tests/test_html_report.py -v)",
+      "Bash(./venv/Scripts/python.exe -m pytest tests/test_html_report.py -v)",
+      "Bash(./venv/Scripts/python.exe -m pytest -q)",
+      "Bash(./venv/Scripts/python.exe -m inmoai_lt clean --config config/cleaning.yaml --mappings config/mappings_lt_en.yaml --raw-dir data/raw --out-dir data/processed)",
+      "Bash(cp -r data/processed /tmp/run1)",
+      "Bash(./venv/Scripts/python.exe -m inmoai_lt clean --config config/cleaning.yaml --mappings config/mappings_lt_en.yaml --raw-dir data/raw --out-dir /tmp/run2)"
     ],
     "defaultMode": "bypassPermissions"
   },

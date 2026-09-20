@@ -1,0 +1,40 @@
+# InmoAI-lt modelling configuration.
+#
+# Hyperparameters are carried over from the reference notebook
+# InmoAI/models/MAIN_Tomas_feature_selection_2.3._neighbours_percentages_departamento.ipynb
+# and are NOT recalibrated to Vilnius data. Retune them here if held-out metrics disappoint.
+
+# What the model regresses on. predict() always returns EUR regardless of this setting,
+# so all three modes are directly comparable on the same held-out split.
+#   price          -- regress price_eur directly (matches the reference notebook)
+#   price_per_sqm  -- regress price_eur / total_area_sqm, multiply back by area on predict
+#   log_price      -- regress log(price_eur), exponentiate on predict
+target: price
+
+split:
+  test_size: 0.2
+  random_seed: 42
+
+# Final estimator of the stack. Values as used in the reference notebook.
+catboost:
+  learning_rate: 0.087
+  n_estimators: 400
+  max_depth: 9
+
+# The "neighbours" feature: a KNN over latitude/longitude (haversine, in radians) that
+# estimates the local price per sqm. It is a base learner inside a StackingRegressor, so
+# sklearn cross-fits it and the feature never sees its own row's target.
+neighbours:
+  n_neighbors: 30        # reference notebook used 30
+  stacking_cv: 5
+  # Small segments cannot support 30 neighbours or 5 folds.
+  per_segment:
+    house_rent:
+      n_neighbors: 8
+      stacking_cv: 3
+
+# Segments with fewer training rows than this are marked low_n, and any cap rate derived
+# from them carries low_confidence=True.
+low_n_threshold: 300
+
+models_dir: models
